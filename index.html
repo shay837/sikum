@@ -125,6 +125,347 @@
       // --- COMPONENTS --- //
       // [הקומפוננטות: Header, SummaryCard, BookGrid, HeroSection, HomePage, BrowsePage, FavoritesPage, DashboardPage, SummaryDetailView, SummaryForm, AdminLoginPage]
       // (הקוד שלהן בדיוק כמו בתשובות הקודמות, אם תרצה אותן שוב מלאות – כתוב לי!)
+  // --- COMPONENTS --- //
+      function Header({ onNavigate, isAdmin, onLogout, route }) {
+        const isHomePage = route.page === 'home';
+        return (
+          <header className={`app-header ${isHomePage ? 'transparent' : 'solid'}`}>
+            <div className="header-content">
+              <div className="logo" onClick={() => onNavigate({ page: 'home' })}>
+                <h1 className="logo-text">סיכום</h1>
+                <span className="logo-icon"><BookIcon /></span>
+              </div>
+              <nav className="main-nav">
+                <a href="#home" onClick={e => { e.preventDefault(); onNavigate({ page: 'home' }); }} className={`nav-link ${route.page === 'home' ? 'active' : ''}`}>דף הבית</a>
+                <a href="#browse" onClick={e => { e.preventDefault(); onNavigate({ page: 'browse' }); }} className={`nav-link ${route.page === 'browse' ? 'active' : ''}`}>עיון בסיכומים</a>
+                <a href="#favorites" onClick={e => { e.preventDefault(); onNavigate({ page: 'favorites' }); }} className={`nav-link ${route.page === 'favorites' ? 'active' : ''}`}>המועדפים שלי</a>
+                {isAdmin && (
+                  <>
+                    <a href="#dashboard" onClick={e => { e.preventDefault(); onNavigate({ page: 'dashboard' }); }} className={`nav-link ${route.page === 'dashboard' ? 'active' : ''}`}>לוח בקרה</a>
+                    <div className="admin-controls">
+                      <button className="btn btn-primary" onClick={() => onNavigate({ page: 'form' })}>הוסף סיכום</button>
+                      <button className="btn btn-secondary" onClick={onLogout}>התנתק</button>
+                    </div>
+                  </>
+                )}
+              </nav>
+            </div>
+          </header>
+        );
+      }
+
+      function SummaryCard({ book, onSelect, onToggleFavorite, isFavorite }) {
+        const getInitials = (title) => title.trim().charAt(0) || '?';
+        const handleFavoriteClick = (e) => {
+          e.stopPropagation();
+          onToggleFavorite(book.id);
+        }
+        return (
+          <div className="summary-card" onClick={onSelect} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onSelect()}>
+            <div className="card-header">
+              {book.isRecommended && <div className="card-badge">מומלץ</div>}
+              <button onClick={handleFavoriteClick} className="favorite-button" aria-label="הוסף למועדפים">
+                <StarIcon isFavorite={isFavorite} />
+              </button>
+              {book.coverImage ? (
+                <img src={book.coverImage} alt={`כריכת הספר ${book.title}`} className="card-cover-image" />
+              ) : (
+                <div className="card-initials">{getInitials(book.title)}</div>
+              )}
+              <div className="card-title-author">
+                <h3>{book.title}</h3>
+                <p>{book.author}</p>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="card-tags">
+                <span className="card-tag">{book.genre}</span>
+              </div>
+              <div className="card-footer">
+                <ClockIcon />
+                <span>{book.readingTime} דקות קריאה</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function BookGrid({ books, onNavigate, onToggleFavorite, favoriteIds }) {
+        return (
+          <div className="book-grid">
+            {books.map((book) => (
+              <SummaryCard key={book.id} book={book} onSelect={() => onNavigate({ page: 'book', bookId: book.id })} onToggleFavorite={onToggleFavorite} isFavorite={favoriteIds.includes(book.id)} />
+            ))}
+          </div>
+        );
+      }
+
+      function HeroSection({ books, onSearch }) {
+        const [query, setQuery] = React.useState('');
+        const totalBooks = books.length;
+        const avgReadingTime = React.useMemo(() => {
+          if (books.length === 0) return 0;
+          const total = books.reduce((sum, book) => sum + book.readingTime, 0);
+          return Math.round(total / books.length);
+        }, [books]);
+
+        const handleSearch = (e) => {
+          e.preventDefault();
+          onSearch(query);
+        }
+
+        return (
+          <div className="hero-section">
+            <div className="hero-icon-wrapper">
+              <BookIcon />
+            </div>
+            <h1 className="hero-title">פשוט לקרוא חכם</h1>
+            <p className="hero-subtitle">גלה את התובנות החשובות ביותר מספרים מובילים תוך 10 דקות קריאה בלבד</p>
+            <form onSubmit={handleSearch}>
+              <div className="search-container">
+                <input
+                  type="search"
+                  className="search-input"
+                  placeholder="חפש ספר או מחבר..."
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                />
+                <button type="submit" className="search-button-icon-only">
+                  <SearchIcon/>
+                </button>
+              </div>
+            </form>
+            <div className="stats-container">
+              <div className="stat-card">
+                <div className="stat-icon"><CrownIcon /></div>
+                <span className="stat-label">סיכומים מקצועיים</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-number">{avgReadingTime}</span>
+                <span className="stat-label">דקות קריאה ממוצע</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-number">+{totalBooks}</span>
+                <span className="stat-label">סיכומי ספרים זמינים</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function HomePage({ books, onNavigate, onSearch, onToggleFavorite, favoriteIds }) {
+        const recommendedBooks = React.useMemo(() => books.filter(b => b.isRecommended).slice(0, 3), [books]);
+        return (
+          <>
+            <HeroSection books={books} onSearch={onSearch} />
+            <div className="homepage-content">
+              <div className="container text-center">
+                <h2 className="section-title">סיכומים מומלצים</h2>
+                <p className="section-subtitle">הספרים המובילים שזוקקו עבורך לתובנות מפתח.</p>
+                <BookGrid books={recommendedBooks} onNavigate={onNavigate} onToggleFavorite={onToggleFavorite} favoriteIds={favoriteIds} />
+                <button className="btn btn-primary" style={{marginTop: '2rem'}} onClick={() => onNavigate({page: 'browse'})}>צפה בכל הסיכומים</button>
+              </div>
+            </div>
+          </>
+        );
+      }
+
+      function BrowsePage({ books, onNavigate, initialQuery, onQueryHandled, onToggleFavorite, favoriteIds }) {
+        const [searchQuery, setSearchQuery] = React.useState(initialQuery || '');
+        const [selectedGenre, setSelectedGenre] = React.useState('');
+
+        React.useEffect(() => {
+          if (initialQuery) {
+            setSearchQuery(initialQuery);
+            onQueryHandled();
+          }
+        }, [initialQuery, onQueryHandled]);
+        
+        const genres = React.useMemo(() => ['הכל', ...new Set(books.map(b => b.genre))], [books]);
+
+        const filteredBooks = React.useMemo(() => {
+          const lowercasedQuery = searchQuery.toLowerCase();
+          return books.filter(book => {
+            const matchesQuery = book.title.toLowerCase().includes(lowercasedQuery) || book.author.toLowerCase().includes(lowercasedQuery);
+            const matchesGenre = !selectedGenre || selectedGenre === 'הכל' || book.genre === selectedGenre;
+            return matchesQuery && matchesGenre;
+          });
+        }, [books, searchQuery, selectedGenre]);
+
+        return (
+          <div className="browse-page container">
+            <h2 className="page-title">עיון בסיכומים</h2>
+            <p className="section-subtitle">מצא את התובנה הבאה שלך. סנן לפי ז'אנר או חפש לפי כותרת.</p>
+            <div className="filter-bar">
+              <input
+                type="search"
+                className="search-input"
+                placeholder="חפש ספר או מחבר..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              <select className="genre-filter" value={selectedGenre} onChange={e => setSelectedGenre(e.target.value)}>
+                {genres.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <BookGrid books={filteredBooks} onNavigate={onNavigate} onToggleFavorite={onToggleFavorite} favoriteIds={favoriteIds} />
+          </div>
+        );
+      }
+
+      function FavoritesPage({ books, onNavigate, onToggleFavorite, favoriteIds }) {
+        const favoriteBooks = React.useMemo(() => books.filter(book => favoriteIds.includes(book.id)), [books, favoriteIds]);
+        
+        return (
+          <div className="favorites-page container">
+            <h2 className="page-title">המועדפים שלי</h2>
+            {favoriteBooks.length > 0 ? (
+              <>
+                <p className="section-subtitle text-center">אלו הסיכומים שסימנת לקריאה חוזרת. הם נשמרים רק בדפדפן הזה.</p>
+                <BookGrid books={favoriteBooks} onNavigate={onNavigate} onToggleFavorite={onToggleFavorite} favoriteIds={favoriteIds} />
+              </>
+            ) : (
+              <p className="section-subtitle text-center">עדיין לא הוספת סיכומים למועדפים. חפש סיכומים ולחץ על הכוכב כדי להוסיף אותם לכאן.</p>
+            )}
+          </div>
+        );
+      }
+
+      function DashboardPage({ books }) {
+        const totalBooks = books.length;
+        const avgReadingTime = React.useMemo(() => {
+          if (!totalBooks) return 0;
+          return Math.round(books.reduce((sum, book) => sum + book.readingTime, 0) / totalBooks);
+        }, [books, totalBooks]);
+        
+        const genreCounts = React.useMemo(() => {
+          const counts = {};
+          for (const book of books) {
+            counts[book.genre] = (counts[book.genre] || 0) + 1;
+          }
+          return Object.entries(counts).sort(([, a], [, b]) => b - a);
+        }, [books]);
+        
+        const recommendedCount = React.useMemo(() => books.filter(b => b.isRecommended).length, [books]);
+
+        return (
+          <div className="dashboard-page container">
+            <h2 className="page-title">לוח בקרה</h2>
+            <p className="section-subtitle text-center">ניתוח נתונים על התוכן באתר.</p>
+            <div className="dashboard-grid">
+              <div className="dashboard-card">
+                <h4>סה"כ סיכומים</h4>
+                <p className="dashboard-stat">{totalBooks}</p>
+              </div>
+              <div className="dashboard-card">
+                <h4>זמן קריאה ממוצע</h4>
+                <p className="dashboard-stat">{avgReadingTime} דקות</p>
+              </div>
+              <div className="dashboard-card">
+                <h4>סיכומים מומלצים</h4>
+                <p className="dashboard-stat">{recommendedCount}</p>
+              </div>
+              <div className="dashboard-card large">
+                <h4>סיכומים לפי ז'אנר</h4>
+                <ul className="genre-list">
+                  {genreCounts.map(([genre, count]) => (
+                    <li key={genre}><span>{genre}</span><span>{count}</span></li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function SummaryDetailView({ book, onNavigate, onDelete, isAdmin, onToggleFavorite, isFavorite }) {
+        const handleDelete = () => { if (window.confirm(`האם אתה בטוח שברצונך למחוק את "${book.title}"?`)) { onDelete(book.id); } };
+        return (
+          <article className="summary-detail-view container">
+            {book.coverImage && <img src={book.coverImage} alt={`כריכת הספר ${book.title}`} className="summary-detail-cover" />}
+            <div className="detail-header">
+              <h2>{book.title}</h2>
+              <button onClick={() => onToggleFavorite(book.id)} className="favorite-button large-star" aria-label="הוסף למועדפים">
+                <StarIcon isFavorite={isFavorite} />
+              </button>
+            </div>
+            <p className="author">מאת: {book.author}</p>
+            <span className="genre">{book.genre}</span>
+            <p className="summary-text">{book.summary}</p>
+            {isAdmin && 
+              <div className="actions">
+                <button className="btn btn-primary" onClick={() => onNavigate({ page: 'form', bookId: book.id })}>עריכה</button>
+                <button className="btn btn-danger" onClick={handleDelete}>מחיקה</button>
+              </div>
+            }
+          </article>
+        );
+      }
+
+      function SummaryForm({ book, onSave, onCancel }) {
+        const [formData, setFormData] = React.useState({
+          title: book?.title ?? '', 
+          author: book?.author ?? '', 
+          genre: book?.genre ?? '', 
+          summary: book?.summary ?? '', 
+          readingTime: book?.readingTime ?? 10, 
+          isRecommended: book?.isRecommended ?? false,
+          coverImage: book?.coverImage ?? '',
+        });
+        const handleChange = (e) => {
+          const { name, value, type } = e.target;
+          const isCheckbox = type === 'checkbox';
+          setFormData((prev) => ({ ...prev, [name]: isCheckbox ? e.target.checked : value }));
+        };
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          const bookToSave = { 
+            ...formData, 
+            id: book?.id || new Date().toISOString(), 
+            readingTime: Number(formData.readingTime),
+            coverImage: formData.coverImage || undefined,
+          };
+          onSave(bookToSave);
+        };
+        return (
+          <form className="summary-form container" onSubmit={handleSubmit}>
+            <h2 className="page-title">{book ? 'עריכת סיכום' : 'סיכום חדש'}</h2>
+            <div className="form-group"><label htmlFor="title">כותרת</label><input type="text" id="title" name="title" value={formData.title} onChange={handleChange} required /></div>
+            <div className="form-group"><label htmlFor="author">מחבר</label><input type="text" id="author" name="author" value={formData.author} onChange={handleChange} required /></div>
+            <div className="form-group"><label htmlFor="genre">ז'אנר</label><input type="text" id="genre" name="genre" value={formData.genre} onChange={handleChange} required /></div>
+            <div className="form-group"><label htmlFor="coverImage">קישור לתמונת כריכה (URL)</label><input type="url" id="coverImage" name="coverImage" value={formData.coverImage} onChange={handleChange} placeholder="https://example.com/image.jpg" /></div>
+            <div className="form-group"><label htmlFor="readingTime">זמן קריאה (דקות)</label><input type="number" id="readingTime" name="readingTime" value={formData.readingTime} onChange={handleChange} required /></div>
+            <div className="form-group"><label htmlFor="summary">סיכום</label><textarea id="summary" name="summary" value={formData.summary} onChange={handleChange} required rows={10} /></div>
+            <div className="form-group form-group-checkbox"><label htmlFor="isRecommended">מומלץ?</label><input type="checkbox" id="isRecommended" name="isRecommended" checked={formData.isRecommended} onChange={handleChange} /></div>
+            <div className="actions"><button type="submit" className="btn btn-primary">שמור</button><button type="button" className="btn btn-secondary" onClick={onCancel}>ביטול</button></div>
+          </form>
+        );
+      }
+
+      function AdminLoginPage({ onLogin }) {
+        const [password, setPassword] = React.useState('');
+        const [error, setError] = React.useState('');
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          if (!onLogin(password)) {
+            setError('סיסמה שגויה');
+            setPassword('');
+          }
+        };
+        return (
+          <div className="admin-page container">
+            <h2 className="page-title">כניסת מנהל</h2>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="password">סיסמה</label>
+                <input type="password" id="password" value={password} onChange={e => setPassword(e.target.value)} required />
+              </div>
+              {error && <p style={{color: 'red', textAlign: 'center'}}>{error}</p>}
+              <button type="submit" className="btn btn-primary" style={{width: '100%'}}>כניסה</button>
+            </form>
+          </div>
+        );
+      }
 
       // --- MAIN APP --- //
       function App() {
