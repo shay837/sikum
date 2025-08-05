@@ -1,0 +1,5 @@
+{
+  "name": "Sikum - Simply Read Smart",
+  "description": "A personal, client-side application to write and manage book summaries. All data is stored locally in the browser.",
+  "requestFramePermissions": []
+}
